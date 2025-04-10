@@ -56,7 +56,46 @@ int Radio_Init(void)
 #endif
   return State; }
 
-int Radio_ConfigManchFSK(uint8_t PktLen, const uint8_t *SYNC, uint8_t SYNClen)         // Radio setup for M-band OGN/ADS-L
+// Radio setup for O-band OGN/ADS-L on O-band: 38.4 kbps
+int Radio_ConfigFSK(uint8_t PktLen, const uint8_t *SYNC, uint8_t SYNClen)
+{ int ErrState=0; int State=0;
+#ifdef WITH_SX1276
+  State=Radio.setActiveModem(RADIOLIB_SX127X_FSK_OOK);
+#endif
+#ifdef WITH_SX1262
+  State=Radio.config(RADIOLIB_SX126X_PACKET_TYPE_GFSK);
+#endif
+  if(State) ErrState=State;
+  State=Radio.setBitRate(38.4);                                     // [kpbs] 38.4kbps bit rate
+  if(State) ErrState=State;
+  State=Radio.setFrequencyDeviation(9.6);                           // [kHz]  +/-9.6kHz deviation
+  if(State) ErrState=State;
+  State=Radio.setRxBandwidth(46.9);                                 // [kHz] 50 kHz bandwidth (single or double sideband ?)
+  if(State) ErrState=State;
+  State=Radio.setEncoding(RADIOLIB_ENCODING_NRZ);
+  if(State) ErrState=State;
+  State=Radio.setPreambleLength(32);                                // [bits] preamble
+  if(State) ErrState=State;
+  State=Radio.setDataShaping(RADIOLIB_SHAPING_0_5);                 // [BT]   FSK modulation shaping
+  if(State) ErrState=State;
+  State=Radio.setCRC(0, 0);                                         // disable CRC: we do it ourselves
+  if(State) ErrState=State;
+  State=Radio.fixedPacketLengthMode(PktLen);                        // [bytes] Fixed packet size mode
+  if(State) ErrState=State;
+#ifdef WITH_SX1276
+  State=Radio.disableAddressFiltering();                            // don't want any of such features
+  State=Radio.invertPreamble(false);                                // true=0xAA, false=0x55
+#endif
+  State=Radio.setSyncWord((uint8_t *)SYNC, SYNClen);                // SYNC sequence: 8 bytes which is equivalent to 4 bytes before Manchester encoding
+  if(State) ErrState=State;
+#ifdef WITH_SX1262
+  State=Radio.setRxBoostedGainMode(false);                          // 2mA more current but boosts sensitivity
+  if(State) ErrState=State;
+#endif
+  return ErrState; }                                                // this call takes 18-19 ms
+
+// Radio setup for O-band OGN/ADS-L on O-band: 50 kbps (Manchester encoding)
+int Radio_ConfigManchFSK(uint8_t PktLen, const uint8_t *SYNC, uint8_t SYNClen)
 { int ErrState=0; int State=0;
 #ifdef WITH_SX1276
   State=Radio.setActiveModem(RADIOLIB_SX127X_FSK_OOK);
@@ -69,7 +108,7 @@ int Radio_ConfigManchFSK(uint8_t PktLen, const uint8_t *SYNC, uint8_t SYNClen)  
   if(State) ErrState=State;
   State=Radio.setFrequencyDeviation(50.0);                          // [kHz]  +/-50kHz deviation
   if(State) ErrState=State;
-  State=Radio.setRxBandwidth(234.3);                                // [kHz]  250kHz bandwidth (but is it a single or double sideband ?)
+  State=Radio.setRxBandwidth(234.3);                                // [kHz]  250kHz bandwidth (single or double sideband ?)
   if(State) ErrState=State;
   State=Radio.setEncoding(RADIOLIB_ENCODING_NRZ);
   if(State) ErrState=State;
@@ -83,7 +122,7 @@ int Radio_ConfigManchFSK(uint8_t PktLen, const uint8_t *SYNC, uint8_t SYNClen)  
   if(State) ErrState=State;
 #ifdef WITH_SX1276
   State=Radio.disableAddressFiltering();                            // don't want any of such features
-  State=Radio.invertPreamble(true); // true=0xAA, false=0x55
+  State=Radio.invertPreamble(false);                                // true=0xAA, false=0x55
 #endif
   State=Radio.setSyncWord((uint8_t *)SYNC, SYNClen);                // SYNC sequence: 8 bytes which is equivalent to 4 bytes before Manchester encoding
   if(State) ErrState=State;
@@ -153,8 +192,8 @@ int Radio_TxManchFSK(const uint8_t *Packet, uint8_t Len)                 // tran
 // ===============================================================================================================
 
 // ADS-L SYNC:       0xF5724B18 encoded in Manchester (fixed packet length 0x18 is included)
-static const uint8_t ADSL_SYNC[10] = { 0x55, 0x99, 0x95, 0xA6, 0x9A, 0x65, 0xA9, 0x6A, 0x00, 0x00 };
-
+static const uint8_t ADSL_SYNC_M[10] = { 0x55, 0x99, 0x95, 0xA6, 0x9A, 0x65, 0xA9, 0x6A, 0x00, 0x00 }; // only 8 bytes matter
+static const uint8_t ADSL_SYNC_O[10] = { 0x2D, 0xD4, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 }; // only 8 bytes matter
 
 // ===============================================================================================================
 
@@ -167,7 +206,7 @@ uint32_t Address  = 0;
 uint32_t AddrType = 7;                 // address table: OGN
 uint8_t AcftType  = 2;                 // OGN aircraft-type: motor aircraft
 
-const float TxPower = 10.0;            // [dBm]
+const float TxPower = 14.0;            // [dBm]
 
 const float FreqM[2] = { 868.200, 868.400 } ;    // two channels on the M-Band spaced by 200kHz
 const float FreqO[5] = { 869.425, 869.475, 869.525, 869.575, 869.625 } ;  // 5 channel in the O-band spaced by 50kHz
@@ -215,10 +254,12 @@ void loop()
   EncodePos(ADSL_Pos, TimeStamp);
   TimeStamp+=1; if(TimeStamp>60) TimeStamp-=60;
 
+  delay(200);
+
   for(int Chan=0; Chan<2; Chan++)
-  { delay(250);
+  { // delay(200);
     Radio.standby();
-    Radio_ConfigManchFSK(PktLen, ADSL_SYNC, 8);
+    Radio_ConfigManchFSK(PktLen, ADSL_SYNC_M, 8);
     Radio.setFrequency(FreqM[Chan]);
     Radio.setOutputPower(TxPower);
     const uint8_t *Packet = &(ADSL_Pos.Version);
@@ -228,5 +269,17 @@ void loop()
     { Serial.printf("%02X", Packet[Idx]); }
     printf("\n");
   }
+
+  for(int Chan=0; Chan<5; Chan++)
+  { // delay(200);
+    Radio.standby();
+    Radio_ConfigFSK(PktLen, ADSL_SYNC_O, 2);
+    Radio.setFrequency(FreqO[Chan]);
+    Radio.setOutputPower(TxPower);
+    const uint8_t *Packet = &(ADSL_Pos.Version);
+    Radio_TxFSK(Packet, PktLen);
+  }
+  Serial.printf("O-band <= 5 packets on 5 channels\n");
+
 
 }
