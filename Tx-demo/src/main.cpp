@@ -248,17 +248,22 @@ void setup()
 
 static uint8_t TimeStamp = 0;
 const uint8_t PktLen = ADSL_Packet::TxBytes-3;
+static ADSL_Packet ADSL_Pos;
 
 void loop()
 {
-  ADSL_Packet ADSL_Pos;
+  delay(1);
+  static uint32_t PrevSec=0;
+  uint32_t msTime=millis();
+  uint32_t Sec=msTime/500;
+  if(Sec==PrevSec) return;
+  PrevSec=Sec;
+
   // EncodePos(ADSL_Pos, TimeStamp);
   TimeStamp+=1; if(TimeStamp>60) TimeStamp-=60;
 
-  delay(200);
-
   for(int Chan=0; Chan<2; Chan++)
-  { // delay(200);
+  { delay(50);
     EncodePos(ADSL_Pos, Chan);                         // put channel number into timestamp
     Radio.standby();
     Radio_ConfigManchFSK(PktLen, ADSL_SYNC_M, 8);
@@ -273,7 +278,7 @@ void loop()
   }
 
   for(int Chan=0; Chan<5; Chan++)
-  { // delay(200);
+  { delay(50);
     EncodePos(ADSL_Pos, 10+Chan);                      // put channel number into timestamp
     Radio.standby();
     Radio_ConfigFSK(PktLen, ADSL_SYNC_O, 3);
