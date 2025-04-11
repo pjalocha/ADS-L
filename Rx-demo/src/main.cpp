@@ -70,9 +70,8 @@ int Radio_ConfigFSK(uint8_t PktLen, const uint8_t *SYNC, uint8_t SYNClen)
   if(State) ErrState=State;
   State=Radio.setFrequencyDeviation(9.6);                           // [kHz]  +/-9.6kHz deviation
   if(State) ErrState=State;
-  State=Radio.setRxBandwidth(23.4);                                 // [kHz] 23.4, 29.3, 39.0, 46.9, 58.6, 78.2, 93.8, 117.3, 156.2, 187.2, 234.3, 312.0, 373.6 and 467.0
+  State=Radio.setRxBandwidth(29.3);                                 // [kHz] 23.4, 29.3, 39.0, 46.9, 58.6, 78.2, 93.8, 117.3, 156.2, 187.2, 234.3, 312.0, 373.6 and 467.0
   if(State) ErrState=State;
-/*
 #ifdef WITH_SX1276
   State=Radio.setAFCBandwidth(46.9);                                // [kHz]  auto-frequency-tune bandwidth
   if(State) ErrState=State;
@@ -81,7 +80,6 @@ int Radio_ConfigFSK(uint8_t PktLen, const uint8_t *SYNC, uint8_t SYNClen)
   State=Radio.setAFCAGCTrigger(RADIOLIB_SX127X_RX_TRIGGER_PREAMBLE_DETECT); //
   if(State) ErrState=State;
 #endif
-*/
   State=Radio.setEncoding(RADIOLIB_ENCODING_NRZ);
   if(State) ErrState=State;
   State=Radio.setPreambleLength(32);                                // [bits] shorter preamble for reception
@@ -140,7 +138,7 @@ int Radio_ConfigManchFSK(uint8_t PktLen, const uint8_t *SYNC, uint8_t SYNClen)
   if(State) ErrState=State;
   State=Radio.setPreambleLength(8);                                 // [bits] minimal preamble
   if(State) ErrState=State;
-  State=Radio.setDataShaping(RADIOLIB_SHAPING_0_5);                 // [BT]   FSK modulation shaping
+  State=Radio.setDataShaping(RADIOLIB_SHAPING_1_0);                 // [BT]   FSK modulation shaping
   if(State) ErrState=State;
   State=Radio.setCRC(0, 0);                                         // disable CRC: we do it ourselves
   if(State) ErrState=State;
@@ -219,7 +217,8 @@ int Radio_TxManchFSK(const uint8_t *Packet, uint8_t Len)                 // tran
 
 // ADS-L SYNC:       0xF5724B18 encoded in Manchester (fixed packet length 0x18 is included)
 static const uint8_t ADSL_SYNC_M[10] = { 0x55, 0x99, 0x95, 0xA6, 0x9A, 0x65, 0xA9, 0x6A, 0x00, 0x00 }; // only 8 bytes matter
-static const uint8_t ADSL_SYNC_O[10] = { 0x2D, 0xD4, 0x18, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 }; // only 8 bytes matter
+// static const uint8_t ADSL_SYNC_O[10] = { 0x2D, 0xD4, 0x18, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 }; // only 3 bytes matter
+static const uint8_t ADSL_SYNC_O[10] = { 0x72, 0x4B, 0x18, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 }; // only 3 bytes matter
 
 // ===============================================================================================================
 
@@ -277,6 +276,7 @@ static ADSL_Packet RxPkt;
 static uint8_t RxChan=2;
 
 static uint32_t RxCount=0;
+static uint32_t GoodCount=0;
 
 void loop()
 {
@@ -288,10 +288,22 @@ void loop()
   uint8_t *Packet = &(RxPkt.Version);
   int RxPktLen=Radio_RxFSK(Packet, PktLen, 500);
   if(RxPktLen>0)
-  { Serial.printf("%5.3f => Rx[#%d] CRC=%06X\n", 1e-3*millis(), RxChan, RxPkt.checkCRC());
+  { uint32_t CRC=RxPkt.checkCRC();
+    Serial.printf("%5.3f => Rx[#%d] ", 1e-3*millis(), RxChan);
+    for(uint8_t Idx=0; Idx<RxPktLen; Idx++)
+      Serial.printf("%02X", Packet[Idx]);
+    Serial.printf(" CRC=%06X", CRC);
+    if(CRC==0x000000)
+     { RxPkt.Descramble();
+       Serial.printf(" => %d", RxPkt.TimeStamp);
+       GoodCount++; }
+    Serial.printf("\n");
     RxCount++; }
-  RxChan++; if(RxChan>=5) RxChan=0;
+  // RxChan++; if(RxChan>=5) RxChan=0;
   if(RxPktLen<=0)
-  { Serial.printf("%5.3f no Rx => #%d %5.3fpkt/s\n", 1e-3*millis(), RxChan, 1e3*RxCount/millis()); }
+  { float GoodRate=0;
+    if(RxCount) GoodRate=GoodCount*100.0f/RxCount;
+    Serial.printf("%5.3f no Rx => #%d %5.3fpkt/s %4.2f%%\n",
+            1e-3*millis(), RxChan, 1e3*RxCount/millis(), GoodRate); }
 
 }
