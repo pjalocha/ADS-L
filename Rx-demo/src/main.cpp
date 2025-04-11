@@ -59,21 +59,21 @@ int Radio_Init(void)
 // Radio setup for O-band OGN/ADS-L on O-band: 38.4 kbps
 int Radio_ConfigFSK(uint8_t PktLen, const uint8_t *SYNC, uint8_t SYNClen)
 { int ErrState=0; int State=0;
-#ifdef WITH_SX1276
-  State=Radio.setActiveModem(RADIOLIB_SX127X_FSK_OOK);
-#endif
-#ifdef WITH_SX1262
-  State=Radio.config(RADIOLIB_SX126X_PACKET_TYPE_GFSK);
-#endif
+// #ifdef WITH_SX1276
+//   State=Radio.setActiveModem(RADIOLIB_SX127X_FSK_OOK);
+// #endif
+// #ifdef WITH_SX1262
+//   State=Radio.config(RADIOLIB_SX126X_PACKET_TYPE_GFSK);
+// #endif
   if(State) ErrState=State;
   State=Radio.setBitRate(38.4);                                     // [kpbs] 38.4kbps bit rate
   if(State) ErrState=State;
   State=Radio.setFrequencyDeviation(9.6);                           // [kHz]  +/-9.6kHz deviation
   if(State) ErrState=State;
-  State=Radio.setRxBandwidth(29.3);                                 // [kHz] 23.4, 29.3, 39.0, 46.9, 58.6, 78.2, 93.8, 117.3, 156.2, 187.2, 234.3, 312.0, 373.6 and 467.0
+  State=Radio.setRxBandwidth(23.4);                                 // [kHz] 23.4, 29.3, 39.0, 46.9, 58.6, 78.2, 93.8, 117.3, 156.2, 187.2, 234.3, 312.0, 373.6 and 467.0
   if(State) ErrState=State;
 #ifdef WITH_SX1276
-  State=Radio.setAFCBandwidth(46.9);                                // [kHz]  auto-frequency-tune bandwidth
+  State=Radio.setAFCBandwidth(29.3);                                // [kHz]  auto-frequency-tune bandwidth
   if(State) ErrState=State;
   State=Radio.setAFC(1);                                            // enable AFC
   if(State) ErrState=State;
@@ -84,7 +84,7 @@ int Radio_ConfigFSK(uint8_t PktLen, const uint8_t *SYNC, uint8_t SYNClen)
   if(State) ErrState=State;
   State=Radio.setPreambleLength(32);                                // [bits] shorter preamble for reception
   if(State) ErrState=State;
-  State=Radio.setDataShaping(RADIOLIB_SHAPING_0_5);                 // [BT]   FSK modulation shaping
+  State=Radio.setDataShaping(RADIOLIB_SHAPING_1_0);                 // [BT]   FSK modulation shaping
   if(State) ErrState=State;
   State=Radio.setCRC(0, 0);                                         // disable CRC: we do it ourselves
   if(State) ErrState=State;
@@ -270,37 +270,37 @@ void setup()
 
 }
 
-static uint8_t TimeStamp = 0;
-const uint8_t PktLen = ADSL_Packet::TxBytes-3;
-static ADSL_Packet RxPkt;
-static uint8_t RxChan=2;
+const uint8_t PktLen = ADSL_Packet::TxBytes-3;  // number of bytes we receive excluding SYNC and packet length byte
+static ADSL_Packet RxPkt;                       // the packet we received
 
-static uint32_t RxCount=0;
-static uint32_t GoodCount=0;
+static uint8_t RxChan=2;                        // O-band channel we listen on
+
+static uint32_t RxCount=0;                      // count all received packets
+static uint32_t GoodCount=0;                    // count packets with good CRC
 
 void loop()
 {
 
   Radio.standby();
-  Radio.setOutputPower(TxPower);
-  Radio_ConfigFSK(PktLen, ADSL_SYNC_O, 3);
-  Radio.setFrequency(FreqO[RxChan]);
+  Radio.setOutputPower(TxPower);                                 // setting poiwer is probably not needed for reception
+  Radio_ConfigFSK(PktLen, ADSL_SYNC_O, 3);                       // setup for reception on O-band LDR
+  Radio.setFrequency(FreqO[RxChan]);                             // select reception channel/frequency
   uint8_t *Packet = &(RxPkt.Version);
-  int RxPktLen=Radio_RxFSK(Packet, PktLen, 500);
+  int RxPktLen=Radio_RxFSK(Packet, PktLen, 500);                 // listen up to 0.5sec trying to receive a packet
   if(RxPktLen>0)
-  { uint32_t CRC=RxPkt.checkCRC();
-    Serial.printf("%5.3f => Rx[#%d] ", 1e-3*millis(), RxChan);
-    for(uint8_t Idx=0; Idx<RxPktLen; Idx++)
+  { Serial.printf("%5.3f => Rx[#%d] ", 1e-3*millis(), RxChan);   // print time and the channel we listen on
+    for(uint8_t Idx=0; Idx<RxPktLen; Idx++)                      // print the received bytes
       Serial.printf("%02X", Packet[Idx]);
-    Serial.printf(" CRC=%06X", CRC);
-    if(CRC==0x000000)
-     { RxPkt.Descramble();
-       Serial.printf(" => %d", RxPkt.TimeStamp);
-       GoodCount++; }
+    uint32_t CRC=RxPkt.checkCRC();                               // CRC algorithm over the packet data including the CRC
+    Serial.printf(" CRC=%06X", CRC);                             // print the CRC result, should be all-zeros
+    if(CRC==0x000000)                                            // if CRC is good
+     { RxPkt.Descramble();                                       // descramble the packet
+       Serial.printf(" => %d", RxPkt.TimeStamp);                 // print timestamp which contains transmitt channel
+       GoodCount++; }                                            // count good packets
     Serial.printf("\n");
-    RxCount++; }
+    RxCount++; }                                                 // count all received packets
   // RxChan++; if(RxChan>=5) RxChan=0;
-  if(RxPktLen<=0)
+  if(RxPktLen<=0)                                                // if no packet was received for 0.5sec
   { float GoodRate=0;
     if(RxCount) GoodRate=GoodCount*100.0f/RxCount;
     Serial.printf("%5.3f no Rx => #%d %5.3fpkt/s %4.2f%%\n",
