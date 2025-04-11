@@ -24,6 +24,21 @@ uint32_t getUniqueAddress(void) { return getUniqueMAC()&0x00FFFFFF; } // get uni
 
 // ===============================================================================================================
 
+#ifdef WITH_OLED               // OLED on some Lily-Go boards
+#include <Wire.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
+#define OLED_SDA  4
+#define OLED_SCL 15
+#define OLED_RST 16
+#define SCREEN_WIDTH 128
+#define SCREEN_HEIGHT 64
+
+Adafruit_SSD1306 Display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RST);
+#endif
+
+// ===============================================================================================================
+
 // those are for TTGO modules
 #define Radio_PinRST  23 // Reset
 #define Radio_PinCS   18 // CS
@@ -264,6 +279,23 @@ void setup()
 
   Serial.begin(115200);
   Serial.println("ADS-L demo transmitter for ISM M-band");
+
+#ifdef WITH_OLED
+  pinMode(OLED_RST, OUTPUT);
+  digitalWrite(OLED_RST, LOW);
+  delay(20);
+  digitalWrite(OLED_RST, HIGH);
+
+  Wire.begin(OLED_SDA, OLED_SCL);
+  if(!Display.begin(SSD1306_SWITCHCAPVCC, 0x3c, false, false))
+    Serial.println(F("SSD1306 OLED begin() failed"));
+  Display.clearDisplay();
+  Display.setTextColor(WHITE);
+  Display.setTextSize(2);
+  Display.setCursor(0,0);
+  Display.print(" ADS-L Rx");
+  Display.display();
+#endif
 
   int State = Radio_Init();
   Serial.printf("Radio_Init() => %d\n", State);
