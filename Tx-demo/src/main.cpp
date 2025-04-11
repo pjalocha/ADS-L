@@ -193,7 +193,7 @@ int Radio_TxManchFSK(const uint8_t *Packet, uint8_t Len)                 // tran
 
 // ADS-L SYNC:       0xF5724B18 encoded in Manchester (fixed packet length 0x18 is included)
 static const uint8_t ADSL_SYNC_M[10] = { 0x55, 0x99, 0x95, 0xA6, 0x9A, 0x65, 0xA9, 0x6A, 0x00, 0x00 }; // only 8 bytes matter
-static const uint8_t ADSL_SYNC_O[10] = { 0x2D, 0xD4, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 }; // only 8 bytes matter
+static const uint8_t ADSL_SYNC_O[10] = { 0x2D, 0xD4, 0x18, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 }; // only 8 bytes matter
 
 // ===============================================================================================================
 
@@ -273,7 +273,7 @@ void loop()
   for(int Chan=0; Chan<5; Chan++)
   { // delay(200);
     Radio.standby();
-    Radio_ConfigFSK(PktLen, ADSL_SYNC_O, 2);
+    Radio_ConfigFSK(PktLen, ADSL_SYNC_O, 3);
     Radio.setFrequency(FreqO[Chan]);
     Radio.setOutputPower(TxPower);
     const uint8_t *Packet = &(ADSL_Pos.Version);
