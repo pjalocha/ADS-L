@@ -87,7 +87,7 @@ int Radio_ConfigFSK(uint8_t PktLen, const uint8_t *SYNC, uint8_t SYNClen)
   if(State) ErrState=State;
   State=Radio.setRxBandwidth(23.4);                                 // [kHz] 23.4, 29.3, 39.0, 46.9, 58.6, 78.2, 93.8, 117.3, 156.2, 187.2, 234.3, 312.0, 373.6 and 467.0
   if(State) ErrState=State;
-#ifdef WITH_SX1276
+#ifdef WITH_SX1276X
   State=Radio.setAFCBandwidth(29.3);                                // [kHz]  auto-frequency-tune bandwidth
   if(State) ErrState=State;
   State=Radio.setAFC(1);                                            // enable AFC
@@ -292,8 +292,10 @@ void setup()
   Display.clearDisplay();
   Display.setTextColor(WHITE);
   Display.setTextSize(2);
-  Display.setCursor(0,0);
-  Display.print(" ADS-L Rx");
+  Display.setCursor(0, 0);
+  Display.print(" ADS-L Demo");
+  Display.setCursor(0, 16);
+  Display.print("O-band LDR");
   Display.display();
 #endif
 
@@ -310,6 +312,8 @@ static uint8_t RxChan=2;                        // O-band channel we listen on
 static uint32_t RxCount = 0;                    // count all received packets
 static uint32_t GoodCount[5] = { 0, 0, 0, 0, 0, };   // count packets with good CRC per transmitted channel
 
+static char Line[128];                          // for printing things
+
 void loop()
 {
 
@@ -318,7 +322,7 @@ void loop()
   Radio_ConfigFSK(PktLen, ADSL_SYNC_O, 3);                       // setup for reception on O-band LDR
   Radio.setFrequency(FreqO[RxChan]);                             // select reception channel/frequency
   uint8_t *Packet = &(RxPkt.Version);
-  int RxPktLen=Radio_RxFSK(Packet, PktLen, 500);                 // listen up to 0.5sec trying to receive a packet
+  int RxPktLen=Radio_RxFSK(Packet, PktLen, 200);                 // listen up to 0.5sec trying to receive a packet
   uint32_t msTime=millis();
   if(RxPktLen>0)
   { Serial.printf("%5.3f: Rx[#%d] ", 1e-3*msTime, RxChan);       // print time and the channel we listen on
@@ -345,6 +349,14 @@ void loop()
       float GoodRate=GoodCount[Chan]*1000.0f/msTime;
       Serial.printf(" %4.1f", GoodRate); }
     Serial.printf(" [Hz] %3.1f%%\n", GoodSum*100.0f/RxCount);
+#ifdef WITH_OLED
+    Display.clearDisplay();
+    Display.setTextColor(WHITE);
+    Display.setTextSize(2);
+    Display.setCursor(0,  0); Display.printf("%3d:%4.1fHz", Sec, RxCount*1000.0f/msTime);
+    Display.setCursor(0, 16); Display.printf("   %5.1f%%", GoodSum*100.0f/RxCount);
+    Display.display();
+#endif
     PrevSec=Sec; }
 
 }
