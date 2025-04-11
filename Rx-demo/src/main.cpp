@@ -275,8 +275,8 @@ static ADSL_Packet RxPkt;                       // the packet we received
 
 static uint8_t RxChan=2;                        // O-band channel we listen on
 
-static uint32_t RxCount=0;                      // count all received packets
-static uint32_t GoodCount=0;                    // count packets with good CRC
+static uint32_t RxCount = 0;                    // count all received packets
+static uint32_t GoodCount[5] = { 0, 0, 0, 0, 0, };   // count packets with good CRC per transmitted channel
 
 void loop()
 {
@@ -287,23 +287,32 @@ void loop()
   Radio.setFrequency(FreqO[RxChan]);                             // select reception channel/frequency
   uint8_t *Packet = &(RxPkt.Version);
   int RxPktLen=Radio_RxFSK(Packet, PktLen, 500);                 // listen up to 0.5sec trying to receive a packet
+  uint32_t msTime=millis();
   if(RxPktLen>0)
-  { Serial.printf("%5.3f => Rx[#%d] ", 1e-3*millis(), RxChan);   // print time and the channel we listen on
+  { Serial.printf("%5.3f: Rx[#%d] ", 1e-3*msTime, RxChan);       // print time and the channel we listen on
     for(uint8_t Idx=0; Idx<RxPktLen; Idx++)                      // print the received bytes
       Serial.printf("%02X", Packet[Idx]);
     uint32_t CRC=RxPkt.checkCRC();                               // CRC algorithm over the packet data including the CRC
     Serial.printf(" CRC=%06X", CRC);                             // print the CRC result, should be all-zeros
+    uint8_t TxChan=5;
     if(CRC==0x000000)                                            // if CRC is good
      { RxPkt.Descramble();                                       // descramble the packet
+       TxChan=RxPkt.TimeStamp-10;                                // recover TxChan from the TimeStamp of the packet
        Serial.printf(" => %d", RxPkt.TimeStamp);                 // print timestamp which contains transmitt channel
-       GoodCount++; }                                            // count good packets
+       if(TxChan<5) GoodCount[TxChan]++; }                       // count good packets
     Serial.printf("\n");
     RxCount++; }                                                 // count all received packets
   // RxChan++; if(RxChan>=5) RxChan=0;
-  if(RxPktLen<=0)                                                // if no packet was received for 0.5sec
-  { float GoodRate=0;
-    if(RxCount) GoodRate=GoodCount*100.0f/RxCount;
-    Serial.printf("%5.3f no Rx => #%d %5.3fpkt/s %4.2f%%\n",
-            1e-3*millis(), RxChan, 1e3*RxCount/millis(), GoodRate); }
+  static uint32_t PrevSec=0;
+  uint32_t Sec=msTime/1000;
+  if(Sec!=PrevSec)
+  { Serial.printf("%5.3f:", 1e-3*msTime);
+    uint32_t GoodSum=0;
+    for(uint8_t Chan=0; Chan<5; Chan++)
+    { GoodSum+=GoodCount[Chan];
+      float GoodRate=GoodCount[Chan]*1000.0f/msTime;
+      Serial.printf(" %4.1f", GoodRate); }
+    Serial.printf(" [Hz] %3.1f%%\n", GoodSum*100.0f/RxCount);
+    PrevSec=Sec; }
 
 }
