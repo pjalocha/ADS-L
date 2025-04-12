@@ -85,10 +85,10 @@ int Radio_ConfigFSK(uint8_t PktLen, const uint8_t *SYNC, uint8_t SYNClen)
   if(State) ErrState=State;
   State=Radio.setFrequencyDeviation(9.6);                           // [kHz]  +/-9.6kHz deviation
   if(State) ErrState=State;
-  State=Radio.setRxBandwidth(46.9);                                 // [kHz] 23.4, 29.3, 39.0, 46.9, 58.6, 78.2, 93.8, 117.3, 156.2, 187.2, 234.3, 312.0, 373.6 and 467.0
+  State=Radio.setRxBandwidth(58.6);                                 // [kHz] 23.4, 29.3, 39.0, 46.9, 58.6, 78.2, 93.8, 117.3, 156.2, 187.2, 234.3, 312.0, 373.6 and 467.0
   if(State) ErrState=State;
 #ifdef WITH_SX1276
-  State=Radio.setAFCBandwidth(93.8);                                // [kHz]  auto-frequency-tune bandwidth
+  State=Radio.setAFCBandwidth(58.6);                                // [kHz]  auto-frequency-tune bandwidth
   if(State) ErrState=State;
   State=Radio.setAFC(1);                                            // enable AFC
   if(State) ErrState=State;
@@ -123,10 +123,11 @@ int Radio_RxFSK(uint8_t *Packet, int PktLen)
   return PktLen; }
 
 int Radio_RxFSK(uint8_t *Packet, int PktLen, int Timeout)
-{ Radio.setAFC(1);
+{
 #ifdef WITH_SX1276
-  Radio.startReceive();
+  Radio.setAFC(1);
 #endif
+  Radio.startReceive();
   uint32_t Start=millis();
   int RxPktLen=0;
   for( ; ; )
