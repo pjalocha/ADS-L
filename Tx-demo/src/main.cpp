@@ -74,7 +74,7 @@ int Radio_ConfigFSK(uint8_t PktLen, const uint8_t *SYNC, uint8_t SYNClen)
   if(State) ErrState=State;
   State=Radio.setEncoding(RADIOLIB_ENCODING_NRZ);
   if(State) ErrState=State;
-  State=Radio.setPreambleLength(48);                                // [bits] preamble
+  State=Radio.setPreambleLength(48);                                // [bits] long preamble
   if(State) ErrState=State;
   State=Radio.setDataShaping(RADIOLIB_SHAPING_1_0);                 // [BT]   FSK modulation shaping
   if(State) ErrState=State;
@@ -84,7 +84,7 @@ int Radio_ConfigFSK(uint8_t PktLen, const uint8_t *SYNC, uint8_t SYNClen)
   if(State) ErrState=State;
 #ifdef WITH_SX1276
   State=Radio.disableAddressFiltering();                            // don't want any of such features
-  State=Radio.invertPreamble(false);                                // true=0xAA, false=0x55
+  State=Radio.invertPreamble(true);                                 // true=0xAA, false=0x55
 #endif
   State=Radio.setSyncWord((uint8_t *)SYNC, SYNClen);                // SYNC sequence: 8 bytes which is equivalent to 4 bytes before Manchester encoding
   if(State) ErrState=State;
@@ -193,8 +193,8 @@ int Radio_TxManchFSK(const uint8_t *Packet, uint8_t Len)                 // tran
 
 // ADS-L SYNC:       0xF5724B18 encoded in Manchester (fixed packet length 0x18 is included)
 static const uint8_t ADSL_SYNC_M[10] = { 0x55, 0x99, 0x95, 0xA6, 0x9A, 0x65, 0xA9, 0x6A, 0x00, 0x00 }; // only 8 bytes matter
-// static const uint8_t ADSL_SYNC_O[10] = { 0x2D, 0xD4, 0x18, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 }; // only 3 bytes matter
-static const uint8_t ADSL_SYNC_O[10] = { 0x72, 0x4B, 0x18, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 }; // only 3 bytes matter
+static const uint8_t ADSL_SYNC_O[10] = { 0xB4, 0x2B, 0x18, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 }; // only 3 bytes matter
+// static const uint8_t ADSL_SYNC_O[10] = { 0x72, 0x4B, 0x18, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 }; // only 3 bytes matter
 
 // ===============================================================================================================
 
