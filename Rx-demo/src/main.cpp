@@ -326,11 +326,31 @@ void loop()
 
   Radio.standby();
   Radio.setOutputPower(TxPower);                                 // setting poiwer is probably not needed for reception
-  Radio_ConfigFSK(PktLen, ADSL_SYNC_O, 3);                       // setup for reception on O-band LDR
+  // Radio_ConfigFSK(PktLen, ADSL_SYNC_O, 3);                       // setup for reception on O-band LDR
+  uint8_t SYNC[2] = { 0xAA, 0xB4 };
+  Radio_ConfigFSK(PktLen+8, SYNC, 2);                            //
+  // Radio_ConfigFSK(PktLen+8, ADSL_SYNC_O, 1);                     // setup for reception on O-band LDR
   Radio.setFrequency(FreqO[RxChan]);                             // select reception channel/frequency
-  uint8_t *Packet = &(RxPkt.Version);
-  int RxPktLen=Radio_RxFSK(Packet, PktLen, 200);                 // listen up to 0.5sec trying to receive a packet
+  uint8_t Packet[32];
+  int RxPktLen=Radio_RxFSK(Packet, PktLen+8, 200);                 // listen up to 0.5sec trying to receive a packet
+  // uint8_t *Packet = &(RxPkt.Version);
+  // int RxPktLen=Radio_RxFSK(Packet, PktLen, 200);                 // listen up to 0.5sec trying to receive a packet
   uint32_t msTime=millis();
+  if(RxPktLen>0)
+  { Serial.printf("%5.3f: Rx[#%d:%d] ", 1e-3*msTime, RxChan, RxPktLen);       // print time and the channel we listen on
+    for(uint8_t Idx=0; Idx<RxPktLen; Idx++)                      // print the received bytes
+      Serial.printf("%02X", Packet[Idx]);
+    const uint8_t PAW_Sign[7] = { 0x2B, 0x00, 0x00, 0x00, 0x00, 0x18, 0x71 };
+    const uint8_t ADSL_Sign[2] = { 0x2B, 0x18 };
+    if(memcmp(Packet, PAW_Sign, 7)==0)    // this is possibly PilotAware
+    { Serial.printf(" PAW"); }
+    if(memcmp(Packet, ADSL_Sign, 2)==0)    // this is possibly ADS-L position or telemetry
+    { uint32_t CRC=ADSL_Packet::checkPI(Packet+2, 24);
+      Serial.printf(" ADSL CRC:%06X", CRC); }
+    Serial.printf("\n");
+    RxCount++; }                                                 // count all received packets
+
+/*
   if(RxPktLen>0)
   { Serial.printf("%5.3f: Rx[#%d] ", 1e-3*msTime, RxChan);       // print time and the channel we listen on
     for(uint8_t Idx=0; Idx<RxPktLen; Idx++)                      // print the received bytes
@@ -345,6 +365,8 @@ void loop()
        if(TxChan<5) GoodCount[TxChan]++; }                       // count good packets
     Serial.printf("\n");
     RxCount++; }                                                 // count all received packets
+*/
+
   // RxChan++; if(RxChan>=5) RxChan=0;
   static uint32_t PrevSec=0;
   uint32_t Sec=msTime/1000;
