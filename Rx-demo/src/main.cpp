@@ -9,6 +9,7 @@
 #include "manchester.h"
 
 #include "adsl.h"
+#include "paw.h"
 
 // ===============================================================================================================
 
@@ -312,7 +313,8 @@ void setup()
 }
 
 const uint8_t PktLen = ADSL_Packet::TxBytes-3;  // number of bytes we receive excluding SYNC and packet length byte
-static ADSL_Packet RxPkt;                       // the packet we received
+static ADSL_Packet RxADSL;                       // the packet we received
+static PAW_Packet  RxPAW;
 
 static uint8_t RxChan=2;                        // O-band channel we listen on
 
@@ -320,6 +322,14 @@ static uint32_t RxCount = 0;                    // count all received packets
 static uint32_t GoodCount[5] = { 0, 0, 0, 0, 0, };   // count packets with good CRC per transmitted channel
 
 static char Line[128];                          // for printing things
+
+template <class Type>
+ static int CountDiffBits(const Type *Inp, const Type *Ref, int Size, int MaxErrBits=4)
+{ int Count=0;
+  for(int Idx=0; Idx<Size; Idx++)
+  { Count += Count1s(Inp[Idx]^Ref[Idx]);
+    if(Count>=MaxErrBits) break; }
+  return Count; }
 
 void loop()
 {
@@ -342,11 +352,29 @@ void loop()
       Serial.printf("%02X", Packet[Idx]);
     const uint8_t PAW_Sign[7] = { 0x2B, 0x00, 0x00, 0x00, 0x00, 0x18, 0x71 };
     const uint8_t ADSL_Sign[2] = { 0x2B, 0x18 };
-    if(memcmp(Packet, PAW_Sign, 7)==0)    // this is possibly PilotAware
-    { Serial.printf(" PAW"); }
-    if(memcmp(Packet, ADSL_Sign, 2)==0)    // this is possibly ADS-L position or telemetry
-    { uint32_t CRC=ADSL_Packet::checkPI(Packet+2, 24);
-      Serial.printf(" ADSL CRC:%06X", CRC); }
+    if(CountDiffBits(Packet, ADSL_Sign, 2)<=1)                   // this is possibly ADS-L position or telemetry
+    { uint32_t CRC=ADSL_Packet::checkPI(Packet+2, 24);           // run CRC across the packet
+      Serial.printf(" ADS-L CRC:%06X", CRC);
+      uint8_t ErrBit=ADSL_Packet::FindCRCsyndrome(CRC);
+      if(ErrBit<0xFF)
+      { ADSL_Packet::FlipBit(Packet+2, ErrBit); CRC=ADSL_Packet::checkPI(Packet+2, 24);
+        Serial.printf(" (%d) %06X", ErrBit, CRC); }
+      if(CRC==0)
+      { memcpy(&(RxADSL.Version), Packet+2, 24);
+        RxADSL.Descramble();
+        Serial.printf(" => %02X:%02X:%06X [%2d]",
+          RxADSL.getAcftTypeOGN(), RxADSL.getAddrTable(), RxADSL.getAddress(), RxADSL.TimeStamp);
+      }
+    }
+    else if(CountDiffBits(Packet, PAW_Sign, 7)<=2)                  // this is possibly PilotAware
+    { bool GoodCRC = PAW_Packet::CRC8(Packet+7, 24)==Packet[7+24];  // check the external CRC
+      PAW_Packet::Whiten(Packet+7, 24);                             // dewhiten the packet data
+      bool GoodIntCRC = PAW_Packet::IntCRC(Packet+7, 24)==0;        // check internal CRC
+      Serial.printf(" PAW CRC %c/%c", GoodCRC?'+':'-', GoodIntCRC?'+':'-');
+      if(GoodCRC && GoodIntCRC)
+      { RxPAW = *(PAW_Packet *)(Packet+7);                       // copy the bytes into the PAW_Packet
+        Serial.printf(" => %X:%06X", RxPAW.AcftType, RxPAW.Address); }
+    }
     Serial.printf("\n");
     RxCount++; }                                                 // count all received packets
 
