@@ -28,8 +28,8 @@ static uint8_t HopChan(uint8_t Sec, int32_t Alt)
   return Chan%3; }                                    // [0..2]
 
 int main(int argc, char *argv[])
-{ const int Acfts = 40;
-  const int RefAcft = 2;
+{ const int Acfts   = 60;                             // 60 aircrafts from 0 to 6000m
+  const int RefAcft = 10;                             // reference aircraft at 1000m
 
   int32_t Alt[Acfts];
   for(int Idx=0; Idx<Acfts; Idx++)
