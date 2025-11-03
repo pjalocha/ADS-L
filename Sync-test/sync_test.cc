@@ -55,5 +55,9 @@ int main(int argc, char *argv[])
   SyncTwoByteTest(0x724B, 0x5555);
   SyncTwoByteTest(0x724B, 0xAAAA);
 
+  printf("\n");
+  SyncByteTest(0x2D2B, 0x5555);
+  SyncByteTest(0x2D2B, 0xAAAA);
+
   return 0; }
 

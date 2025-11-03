@@ -27,6 +27,13 @@ static uint8_t HopChan(uint8_t Sec, int32_t Alt)
   // Chan += Scramble(Sec);
   return Chan%3; }                                    // [0..2]
 
+// color control for printing out
+#define BOLD       "\033[1m"
+#define GREEN      "\033[32m"
+#define BOLD_GREEN "\033[1;32m"
+#define BLUE_BKG   "\033[44m"
+#define RESET      "\033[0m"
+
 int main(int argc, char *argv[])
 { const int Acfts   = 60;                             // 60 aircrafts from 0 to 6000m
   const int RefAcft = 10;                             // reference aircraft at 1000m
@@ -55,7 +62,10 @@ int main(int argc, char *argv[])
     { char Mark=' '; if(Idx==RefAcft) Mark='|';
       if(Chan[Idx]==Chan[RefAcft]) Mark='*';
                               else ChanMiss[Idx]+=1;
-      printf("%c", Mark); }
+      if(Idx==RefAcft) printf(BLUE_BKG);
+      printf("%c", Mark);
+      if(Idx==RefAcft) printf(RESET);
+    }
     printf(" %d [%2d:%2d:%2d]\n", Chan[RefAcft], SlotOccup[0], SlotOccup[1], SlotOccup[2]); }
 
   printf("Occup[3] = %d %d %d\n", Occup[0], Occup[1], Occup[2]);
