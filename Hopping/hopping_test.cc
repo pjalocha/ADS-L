@@ -70,16 +70,20 @@ int main(int argc, char *argv[])
 
   printf("Occup[3] = %d %d %d\n", Occup[0], Occup[1], Occup[2]);
 
-  printf("ChanChange[%d]", Acfts);
+  printf("ChanChange[%d] // number of time radio channel changed", Acfts);
   for(int Idx=0; Idx<Acfts; Idx++)
   { if(Idx%15==0) printf("\n");
     printf(" %3d", ChanChange[Idx]); }
   printf("\n");
 
-  printf("ChanMiss[%d]", Acfts);
+  printf("ChanMiss[%d] // number of times the reception was missded due a different channel", Acfts);
   for(int Idx=0; Idx<Acfts; Idx++)
   { if(Idx%15==0) printf("\n");
-    printf(" %3d", ChanMiss[Idx]); }
+    printf(" ");
+    if(Idx==RefAcft) printf(BLUE_BKG);
+    printf("%3d", ChanMiss[Idx]);
+    if(Idx==RefAcft) printf(RESET);
+  }
   printf("\n");
 
   return 0; }
