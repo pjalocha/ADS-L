@@ -1,0 +1,26 @@
+1. hopping sequence
+- Should scan 2 channels on M-band and 1 on O-band
+- time slots: 1 sec or 0.4 sec ?
+- 15 sec timebase, same as timestamp cycle
+
+
+2. new packet type of the same size
+- shorten coordinates: 2x16 bits instead of 2x24bits
+  - longitude shortened depending on latitude
+- this will save 2 bytes which can be used for turning rate
+  and flags:
+  - GPS jammed/spoofed
+  - altitude is pressure not HAE
+  - speed is air-speed not GPS (there are few types of air-speed)
+  - heading is magnetic not GPS
+  - turning rate is gyroscope not GPS
+- replace accuracy 2 bytes with pressure altitude (14 bits)
+  amd to flags:
+  - pressure transducer has a proper static sensor
+
+Motivations:
+- provide pressure altitude which some systems use for anti-collision
+- provide a set of data which can be sent when the GPS fails (jamming/spoofing)
+  and then the aircraft can be MLAT and still transmit valid pressure altitude for deconflicting
+
+
