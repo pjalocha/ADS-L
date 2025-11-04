@@ -9,22 +9,18 @@ static uint8_t BitRev(uint8_t Byte)
 
 static uint8_t Scramble(uint8_t Sec)
 { Sec=BitRev(Sec);
-  // Sec = Sec*13+37;
-  // Sec = Sec*29+47;
-  // Sec = Sec*73+19;
   return Sec%60; }
 
-static uint8_t HopChan(uint8_t Sec, int32_t Alt)
+static uint8_t HopChan(uint8_t Sec, int32_t Alt)      // decide on the channel based on Second and Altitude
 { if(Alt<0) Alt=0;
   uint16_t AltBand = Alt/100;                         // [100m] altitude band to select hopping pattern
-  uint8_t HopPhase = AltBand%60;                      // [0..59]
+  uint8_t HopPhase = AltBand%60;                      // [0..59] slot phase depends on the altitude band
   uint8_t ScrSec = Scramble(Sec);                     // [0..59] scrambled second
   uint8_t ChSec = ScrSec+HopPhase; if(ChSec>=60) ChSec-=60;
   uint8_t MinQ = ChSec/15;                            // [0..3] quarter of the minute
-  uint8_t Chan = MinQ; // if(Chan>2) Chan=1;             // [0..2]
+  uint8_t Chan = MinQ;                                // [0..2]
   if(Chan>2) Chan=(ChSec/5)%3;
   Chan += Sec*2;
-  // Chan += Scramble(Sec);
   return Chan%3; }                                    // [0..2]
 
 // color control for printing out
@@ -49,7 +45,7 @@ int main(int argc, char *argv[])
   { Chan[Idx]=0; ChanChange[Idx]=0; ChanMiss[Idx]=0; }
 
   int Occup[3] = { 0, 0, 0 };
-  for(uint8_t Sec=0; Sec<120; Sec++)
+  for(uint8_t Sec=0; Sec<60; Sec++)
   { int SlotOccup[3] = { 0, 0, 0 };
     for(int Idx=0; Idx<Acfts; Idx++)
     { uint8_t NewChan = HopChan(Sec%60, Alt[Idx]);
