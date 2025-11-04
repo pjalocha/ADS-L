@@ -36,29 +36,30 @@ class ADSL_Packet
        } ;
        union
        { uint8_t Position[11]; // Lat[24] | Lon[24] | Speed[8] | Alt[14] | Climb[9] | Track[9]
-         struct
-         {  int32_t Latitude  :24;
-            int32_t Longitude :24;
-           uint8_t  Speed     : 8;
-           uint16_t AltHAE    :14;
-           uint16_t Climb     : 9;
-           uint16_t Track     : 9;
+         struct                     // structure for Type #2 position packet
+         {  int32_t Latitude  :24;  // full latitude
+            int32_t Longitude :24;  // full longitude
+           uint8_t  Speed     : 8;  // speed
+           uint16_t AltHAE    :14;  // HAE altitude
+           uint16_t Climb     : 9;  // climb
+           uint16_t Track     : 9;  // ground track
          } __attribute__((packed));
-         struct
+         struct                     // structure for proposed new position packet
          {  int16_t ShortLat  :16;
             int32_t ShortLon  :16;
            uint8_t  TurnRate  : 8;
-           bool     GPSfix    : 1;   // GPS has a fix
-           bool     AirSpeed  : 1;   // Speed is airspeed, not GPS
-           bool     BaroClimb : 1;   // Climb is pressure-based, not GPS
-           bool     MagTrack  : 1;   // Heading is magnetic, not GPS track
-           bool     GyroTurn  : 1;   // turning-rate is gyro, not GPS
-           uint8_t  Spare     : 3;   // spare bits
+           bool     GPSnofix  : 1;  // GPS has no fix or is spoofed/jammed
+           bool     PressAltHAE:1;  // ALtHAE is from pressure estimate
+           bool     AirSpeed  : 1;  // Speed is airspeed, not GPS
+           bool     BaroClimb : 1;  // Climb is pressure, not GPS
+           bool     MagTrack  : 1;  // Track is from magnetic estimate, not GPS track
+           bool     GyroTurn  : 1;  // TurnRate is gyro, not GPS
+           uint8_t  Spare     : 2;  // spare bits
          } __attribute__((packed));
        } ;
        union
        { uint8_t Integrity[2]; // SourceInteg[2]/DesignAssurance[2]/NavigationIntegrity[4]/NorizAccuracy[3]/VertAccuracy[2]/ValocityAccuracy[2]/Reserved[1]
-         struct
+         struct                       // structure for #02 position packet
          { uint8_t SourceIntegrity:2; // 3=1e-7/h, 2=1e-5/h, 1=1e-3/h  <= SIL
            uint8_t DesignAssurance:2; // 3=B, 2=C, 1=D                 <= SDA
            uint8_t NavigIntegrity :4; // 12=7.5m, 11=25m, 10=75m       <= NIC  +1
@@ -67,10 +68,9 @@ class ADSL_Packet
            uint8_t VelAccuracy    :2; // 3=1m/s 2=3m/s 3=10m/s         <= NACv
            uint8_t Reserved       :1; //
          } __attribute__((packed));
-         struct                       // for A2A position
+         struct                       // structure for the proposed new position packet
          { uint16_t PressAlt: 14;     // [m] standard pressure altitude
-           bool     PressSensor: 1;   // 0=internal sensor, 1=proper static pressure probe
-           // one spare bit left here
+           bool     PressAcc:  2;     // pressure sensor type/accuracy
          } __attribute__((packed));
        } ;
      } __attribute__((packed)) ;
