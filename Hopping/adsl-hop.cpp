@@ -1,17 +1,22 @@
 #include "adsl-hop.h"
 
+// static uint8_t BitRev(uint8_t Byte)                   // reverse bits in a byte
+// { Byte = ((Byte&0xF0)>>4) | ((Byte&0x0F)<<4);
+//   Byte = ((Byte&0xCC)>>2) | ((Byte&0x33)<<2);
+//   Byte = ((Byte&0xAA)>>1) | ((Byte&0x55)<<1);
+//   return Byte; }
+
 static uint8_t BitRev(uint8_t Byte)                   // reverse bits in a byte
-{ Byte = ((Byte&0xF0)>>4) | ((Byte&0x0F)<<4);
-  Byte = ((Byte&0xCC)>>2) | ((Byte&0x33)<<2);
-  Byte = ((Byte&0xAA)>>1) | ((Byte&0x55)<<1);
+{ Byte = ((Byte&0b00111000)>>3) | ((Byte&0b00000111)<<3);
+  Byte = ((Byte&0b00100100)>>2) | ((Byte&0b00001001)<<2) | (Byte&0b00010010);
   return Byte; }
 
 static uint8_t Scramble(uint8_t Sec)                  // [0..59] scramble a second
 { // Sec^=0x13;
   // Sec+=Sec<<2;
   Sec=BitRev(Sec);
-  // if(Sec<60) return Sec;
-  return Sec%60; }
+  if(Sec<60) return Sec;
+  return Sec-60; }
 
 uint8_t MBandChan(uint8_t Sec, int32_t Alt)           // decide on the channel based on Second and Altitude
 { if(Alt<0) Alt=0;
