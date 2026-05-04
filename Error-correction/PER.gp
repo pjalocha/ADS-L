@@ -1,7 +1,7 @@
 set datafile separator ","
 # set key outside right top
 
-set title "Effect of error correction on packet reception rates for ADS-L and OGN"
+set title "Effect of error correction on packet error rates for ADS-L and OGN reception"
 
 set term png size 1024,640
 set output "PER.png"
